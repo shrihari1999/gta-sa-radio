@@ -169,7 +169,12 @@ function randomChoice(arr) {
 
 function buildSongPath(song, station, introNum, outroNum) {
     const artistStr = song.artists.join(', ');
-    const filename = `${artistStr} - ${song.name} (Intro ${introNum}, Outro ${outroNum}).mp3`;
+    let filename;
+    if (introNum === 0 && outroNum === 0) {
+        filename = `${artistStr} - ${song.name}.mp3`;
+    } else {
+        filename = `${artistStr} - ${song.name} (Intro ${introNum}, Outro ${outroNum}).mp3`;
+    }
     return `songs/${station.name}/${filename}`;
 }
 
@@ -235,8 +240,8 @@ function generatePlaylist() {
             
             // 3. Song (mandatory)
             const song = randomPick(songs);
-            const introNum = Math.floor(Math.random() * song.intro_count) + 1;
-            const outroNum = Math.floor(Math.random() * song.outro_count) + 1;
+            const introNum = song.intro_count > 0 ? Math.floor(Math.random() * song.intro_count) + 1 : 0;
+            const outroNum = song.outro_count > 0 ? Math.floor(Math.random() * song.outro_count) + 1 : 0;
             
             generatedPlaylist.push({
                 type: 'song',
