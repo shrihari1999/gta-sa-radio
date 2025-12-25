@@ -3,22 +3,23 @@
   "short_name": "GTA SA Radio",
   "description": "Generate authentic GTA San Andreas radio playlists",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#b7d2f3",
   "icons": [
     {
-      "src": "sa.png",
+      "src": "assets/icons/sa.png",
       "sizes": "256x256",
       "type": "image/png"
     },
     {
-      "src": "sa_192.png",
+      "src": "assets/icons/sa_192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "sa_512.png",
+      "src": "assets/icons/sa_512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

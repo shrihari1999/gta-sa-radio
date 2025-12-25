@@ -6,8 +6,10 @@ const urlsToCache = [
   './app.js',
   './data.json',
   './ads.json',
-  './manifest.json',
-  './sa.png'
+  './manifest.webmanifest',
+  './assets/icons/sa.png',
+  './assets/icons/sa_192.png',
+  './assets/icons/sa_512.png'
   // Add other assets as needed
 ];
 
