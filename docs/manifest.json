@@ -11,6 +11,16 @@
       "src": "sa.png",
       "sizes": "256x256",
       "type": "image/png"
+    },
+    {
+      "src": "sa_192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "sa_512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }
