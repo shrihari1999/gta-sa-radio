@@ -393,7 +393,7 @@ function downloadM3U() {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentStation.name.replace(/\s+/g, '_')}.m3u`;
+    a.download = `${currentStation.name.replace(/\s+/g, '_')}.m3u8`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
