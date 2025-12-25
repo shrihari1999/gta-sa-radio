@@ -26,7 +26,7 @@ const STATION_ICONS = {
     'playback_fm': 'playback_fm.webp',
     'radio_los_santos': 'radio_los_santos.webp',
     'radio_x': 'radio_x.webp',
-    'sfur': 'sfurwebpg'
+    'sfur': 'sfur.webp'
 };
 
 // DOM Elements
