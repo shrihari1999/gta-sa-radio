@@ -1,0 +1,16 @@
+{
+  "name": "GTA San Andreas Radio Playlist Generator",
+  "short_name": "GTA SA Radio",
+  "description": "Generate authentic GTA San Andreas radio playlists",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#ff0000",
+  "icons": [
+    {
+      "src": "sa.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    }
+  ]
+}

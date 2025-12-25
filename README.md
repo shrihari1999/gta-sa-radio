@@ -38,6 +38,23 @@ Music/gta_sa_audio/
 7. Place the file in your audio folder
 8. Open with any music player
 
+## 🏠 PWA Installation
+
+This app can be installed as a Progressive Web App (PWA) on supported devices:
+
+### Android (Chrome)
+1. Open the website in Chrome
+2. Tap the menu (three dots) in the top right
+3. Select "Add to Home screen"
+4. Follow the prompts to install
+
+### Desktop (Chrome/Edge)
+1. Open the website
+2. Click the install icon in the address bar or menu
+3. Follow the prompts
+
+Once installed, the app will work offline and can be launched from your home screen like a native app.
+
 ## 🎵 Playlist Logic
 
 - **Jingle** (70% chance)
