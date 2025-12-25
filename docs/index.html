@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA San Andreas Radio</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="bg-overlay"></div>
+    
+    <div class="container">
+        <header>
+            <h1>RADIO</h1>
+            <p class="subtitle">SAN ANDREAS</p>
+        </header>
+
+        <!-- Background Selector -->
+        <div class="bg-selector">
+            <div class="bg-option active" data-bg="los-santos" title="Los Santos">
+                <img src="assets/bgs/los-santos.png" alt="Los Santos">
+            </div>
+            <div class="bg-option" data-bg="vinewood" title="Vinewood">
+                <img src="assets/bgs/vinewood.png" alt="Vinewood">
+            </div>
+            <div class="bg-option" data-bg="san-fierro" title="San Fierro">
+                <img src="assets/bgs/san-fierro.png" alt="San Fierro">
+            </div>
+            <div class="bg-option" data-bg="san-fierro-bridge" title="Gant Bridge">
+                <img src="assets/bgs/san-fierro-bridge.png" alt="San Fierro Bridge">
+            </div>
+            <div class="bg-option" data-bg="las-venturas" title="Las Venturas">
+                <img src="assets/bgs/las-venturas.png" alt="Las Venturas">
+            </div>
+            <div class="bg-option" data-bg="las-venturas-desert" title="Desert">
+                <img src="assets/bgs/las-venturas-desert.png" alt="Las Venturas Desert">
+            </div>
+        </div>
+
+        <main>
+            <!-- Station Selection -->
+            <div class="section-label">SELECT STATION</div>
+            <div id="station-grid" class="station-grid">
+                <!-- Stations will be populated by JS -->
+            </div>
+
+            <div id="selected-station" class="selected-station hidden">
+                <span id="selected-name"></span>
+            </div>
+
+            <!-- Options -->
+            <div class="card options-card">
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="include-ads" checked>
+                        <span>Advertisements</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="include-weather" checked>
+                        <span>Weather Reports</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="include-bridges" checked>
+                        <span>Bridge Announcements</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Base Path -->
+            <div class="card">
+                <label for="base-path">BASE PATH</label>
+                <input type="text" id="base-path" placeholder="e.g., Music/gta_sa_audio/" value="">
+            </div>
+
+            <button id="generate-btn" class="generate-btn" disabled>
+                GENERATE PLAYLIST
+            </button>
+
+            <div id="preview" class="preview hidden">
+                <h3>PLAYLIST</h3>
+                <div id="preview-stats"></div>
+                <div id="preview-list"></div>
+                <button id="download-btn" class="download-btn">
+                    DOWNLOAD .M3U
+                </button>
+            </div>
+        </main>
+
+        <footer>
+            <p>Place the .m3u file in your audio folder</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
