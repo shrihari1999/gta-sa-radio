@@ -2,49 +2,6 @@
 
 A static web app that generates authentic GTA San Andreas-style radio playlists as .m3u files.
 
-## 🚀 Setup
-
-### 1. Add Required Assets
-
-Before deploying, add your image and font assets:
-
-**Fonts** (`docs/assets/fonts/`):
-- `Diploma-Regular.ttf` — Headings font
-- `Bank-Gothic-Medium.ttf` — Body text font
-- `Bank-Gothic-Light.otf` — Light weight (optional)
-
-**Background Images** (`docs/assets/bgs/`):
-- `los-santos.png`
-- `vinewood.png`
-- `san-fierro.png`
-- `san-fierro-bridge.png`
-- `las-venturas.png`
-- `las-venturas-desert.png`
-
-**Station Icons** (`docs/assets/icons/`):
-- `bounce_fm.png`
-- `csr_1039.png`
-- `k_dst.png`
-- `k_jah_west.png`
-- `k_rose.png`
-- `master_sounds_983.png`
-- `playback_fm.png`
-- `radio_los_santos.png`
-- `radio_x.png`
-- `sfur.png`
-
-### 2. Deploy to GitHub Pages
-
-1. Create a new GitHub repository
-2. Upload the `docs` folder contents (with your assets)
-3. Go to **Settings** → **Pages**
-4. Set source to `main` branch and `/docs` folder
-5. Access at `https://yourusername.github.io/your-repo-name`
-
-### 3. Run Locally
-
-Just open `docs/index.html` in any browser!
-
 ## 📁 Audio File Structure
 
 Organize your audio files like this:

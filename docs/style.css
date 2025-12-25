@@ -162,7 +162,6 @@ main {
 }
 
 .section-label {
-    font-family: var(--font-heading);
     font-size: 1.3rem;
     color: var(--gta-blue);
     text-shadow: var(--text-shadow);
@@ -241,7 +240,6 @@ main {
 }
 
 .selected-station span {
-    font-family: var(--font-heading);
     font-size: 1.5rem;
     color: var(--gta-blue);
     text-shadow: var(--text-shadow);
@@ -315,18 +313,15 @@ input[type="text"]::placeholder {
     padding: 18px;
     border: none;
     border-radius: 8px;
-    font-family: var(--font-heading);
     font-size: 1.5rem;
     letter-spacing: 3px;
     cursor: pointer;
     transition: all 0.2s;
-    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
 }
 
 .generate-btn {
-    background: linear-gradient(to bottom, var(--gta-blue), var(--gta-blue-dark));
-    color: #000;
-    border: 3px solid var(--gta-blue-dark);
+    background: black;
+    color: var(--gta-blue);
 }
 
 .generate-btn:hover:not(:disabled) {

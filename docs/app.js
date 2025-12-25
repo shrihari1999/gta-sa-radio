@@ -17,16 +17,16 @@ const SEGMENT_FOLDERS = {
 
 // Station icon mappings (station key to icon filename)
 const STATION_ICONS = {
-    'bounce_fm': 'bounce_fm.png',
-    'csr_1039': 'csr_1039.png',
-    'k_dst': 'k_dst.png',
-    'k_jah_west': 'k_jah_west.png',
-    'k_rose': 'k_rose.png',
-    'master_sounds_983': 'master_sounds_983.png',
-    'playback_fm': 'playback_fm.png',
-    'radio_los_santos': 'radio_los_santos.png',
-    'radio_x': 'radio_x.png',
-    'sfur': 'sfur.png'
+    'bounce_fm': 'bounce_fm.webp',
+    'csr_1039': 'csr_1039.webp',
+    'k_dst': 'k_dst.webp',
+    'k_jah_west': 'k_jah_west.webp',
+    'k_rose': 'k_rose.webp',
+    'master_sounds_983': 'master_sounds_983.webp',
+    'playback_fm': 'playback_fm.webp',
+    'radio_los_santos': 'radio_los_santos.webp',
+    'radio_x': 'radio_x.webp',
+    'sfur': 'sfurwebpg'
 };
 
 // DOM Elements
@@ -72,7 +72,7 @@ function populateStationGrid() {
     stationGrid.innerHTML = '';
     
     musicStations.forEach(station => {
-        const iconFile = STATION_ICONS[station.key] || `${station.key}.png`;
+        const iconFile = STATION_ICONS[station.key] || `${station.key}.webp`;
         
         const div = document.createElement('div');
         div.className = 'station-icon';
