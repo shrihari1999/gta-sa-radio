@@ -4,6 +4,10 @@ let stationsData = [];
 let adsData = [];
 let generatedPlaylist = [];
 let currentStation = null;
+let currentMode = 'offline'; // 'offline' or 'online'
+let audioPlayer = null;
+let currentTrackIndex = 0;
+let isPlaying = false;
 
 // File path mappings
 const SEGMENT_FOLDERS = {
@@ -34,6 +38,7 @@ const stationGrid = document.getElementById('station-grid');
 const selectedStationDiv = document.getElementById('selected-station');
 const selectedNameSpan = document.getElementById('selected-name');
 const basePathInput = document.getElementById('base-path');
+const basePathCard = document.getElementById('base-path-card');
 const includeAdsCheckbox = document.getElementById('include-ads');
 const includeWeatherCheckbox = document.getElementById('include-weather');
 const includeBridgesCheckbox = document.getElementById('include-bridges');
@@ -42,7 +47,21 @@ const previewSection = document.getElementById('preview');
 const previewStats = document.getElementById('preview-stats');
 const previewList = document.getElementById('preview-list');
 const downloadBtn = document.getElementById('download-btn');
-const bgOptions = document.querySelectorAll('.bg-option');
+const modeButtons = document.querySelectorAll('.mode-btn');
+const audioPlayerDiv = document.getElementById('audio-player');
+const audioElement = document.getElementById('audio-element');
+const playPauseBtn = document.getElementById('play-pause-btn');
+const playIcon = document.getElementById('play-icon');
+const pauseIcon = document.getElementById('pause-icon');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const seekSlider = document.getElementById('seek-slider');
+const timeCurrent = document.getElementById('time-current');
+const timeTotal = document.getElementById('time-total');
+const trackName = document.getElementById('track-name');
+const trackArtist = document.getElementById('track-artist');
+const queueList = document.getElementById('queue-list');
+const queueCount = document.getElementById('queue-count');
 
 // Initialize
 async function init() {
@@ -51,14 +70,26 @@ async function init() {
             fetch('data.json'),
             fetch('ads.json')
         ]);
-        
+
         stationsData = await stationsRes.json();
         adsData = await adsRes.json();
-        
+
         populateStationGrid();
         setupEventListeners();
-        setupBackgroundSelector();
-        
+        setupModeToggle();
+        setupAudioPlayer();
+
+        // Ensure correct initial state based on default mode
+        if (currentMode === 'offline') {
+            basePathCard.classList.remove('hidden');
+            audioPlayerDiv.classList.add('hidden');
+            previewSection.classList.add('hidden');
+        } else {
+            basePathCard.classList.add('hidden');
+            audioPlayerDiv.classList.add('hidden');
+            previewSection.classList.add('hidden');
+        }
+
     } catch (error) {
         console.error('Failed to load data:', error);
         alert('Failed to load radio data. Please ensure data.json and ads.json are present.');
@@ -92,38 +123,77 @@ function populateStationGrid() {
     });
 }
 
-function setupBackgroundSelector() {
-    bgOptions.forEach(option => {
-        option.addEventListener('click', () => {
+function setupModeToggle() {
+    modeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
             // Update active state
-            bgOptions.forEach(o => o.classList.remove('active'));
-            option.classList.add('active');
-            
-            // Change background
-            const bgName = option.dataset.bg;
-            document.body.style.setProperty('--bg-image', `url('assets/bgs/${bgName}.png')`);
-            document.body.style.cssText = ``;
-            
-            // Update the ::before pseudo-element via a style injection
-            updateBackground(bgName);
+            modeButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Set mode
+            currentMode = btn.dataset.mode;
+
+            // Stop any playing audio first
+            stopAudio();
+
+            // Clear the playlist when switching modes
+            generatedPlaylist = [];
+
+            // Toggle UI visibility
+            if (currentMode === 'offline') {
+                basePathCard.classList.remove('hidden');
+                audioPlayerDiv.classList.add('hidden');
+                previewSection.classList.add('hidden');
+                generateBtn.textContent = 'GENERATE PLAYLIST';
+            } else {
+                basePathCard.classList.add('hidden');
+                previewSection.classList.add('hidden');
+                audioPlayerDiv.classList.add('hidden');
+                generateBtn.textContent = 'START LISTENING';
+            }
         });
     });
 }
 
-function updateBackground(bgName) {
-    // Remove existing dynamic style if present
-    let styleEl = document.getElementById('dynamic-bg');
-    if (!styleEl) {
-        styleEl = document.createElement('style');
-        styleEl.id = 'dynamic-bg';
-        document.head.appendChild(styleEl);
-    }
-    
-    styleEl.textContent = `
-        body::before {
-            background-image: url('assets/bgs/${bgName}.png') !important;
+function setupAudioPlayer() {
+    // Play/Pause
+    playPauseBtn.addEventListener('click', togglePlayPause);
+
+    // Previous/Next
+    prevBtn.addEventListener('click', playPrevious);
+    nextBtn.addEventListener('click', playNext);
+
+    // Seek
+    seekSlider.addEventListener('input', (e) => {
+        if (audioElement.duration) {
+            const time = (e.target.value / 100) * audioElement.duration;
+            audioElement.currentTime = time;
         }
-    `;
+    });
+
+    // Audio events
+    audioElement.addEventListener('loadedmetadata', () => {
+        timeTotal.textContent = formatTime(audioElement.duration);
+        seekSlider.max = 100;
+    });
+
+    audioElement.addEventListener('timeupdate', () => {
+        if (audioElement.duration) {
+            const progress = (audioElement.currentTime / audioElement.duration) * 100;
+            seekSlider.value = progress;
+            timeCurrent.textContent = formatTime(audioElement.currentTime);
+        }
+    });
+
+    audioElement.addEventListener('ended', () => {
+        playNext();
+    });
+
+    audioElement.addEventListener('error', (e) => {
+        console.error('Audio playback error:', e);
+        // Try next track on error
+        playNext();
+    });
 }
 
 function setupEventListeners() {
@@ -131,27 +201,40 @@ function setupEventListeners() {
     stationGrid.addEventListener('click', (e) => {
         const stationIcon = e.target.closest('.station-icon');
         if (!stationIcon) return;
-        
+
+        // Stop any playing audio first
+        stopAudio();
+
         // Update selection UI
         document.querySelectorAll('.station-icon').forEach(s => s.classList.remove('selected'));
         stationIcon.classList.add('selected');
-        
+
         // Set current station
         const stationKey = stationIcon.dataset.station;
         currentStation = stationsData.find(s => s.key === stationKey);
-        
+
         // Update selected display
         selectedNameSpan.textContent = currentStation.name;
         selectedStationDiv.classList.remove('hidden');
-        
+
         // Enable generate button
         generateBtn.disabled = false;
-        
-        // Hide preview if showing
+
+        // Hide preview and player if showing
         previewSection.classList.add('hidden');
+        audioPlayerDiv.classList.add('hidden');
+
+        // Clear the playlist
+        generatedPlaylist = [];
     });
-    
-    generateBtn.addEventListener('click', generatePlaylist);
+
+    generateBtn.addEventListener('click', () => {
+        if (currentMode === 'offline') {
+            generatePlaylist();
+        } else {
+            generateAndPlay();
+        }
+    });
     downloadBtn.addEventListener('click', downloadM3U);
 }
 
@@ -165,6 +248,13 @@ function randomPick(arr) {
 function randomChoice(arr) {
     if (!arr || arr.length === 0) return null;
     return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 function buildSongPath(song, station, introNum, outroNum) {
@@ -189,21 +279,49 @@ function buildAdPath(ad) {
     return `advertisements/${filename}`;
 }
 
+// Build API URL for online mode
+function buildApiUrl(item, station) {
+    const baseUrl = 'https://gtatunes.net/api';
+
+    if (item.type === 'song') {
+        // Extract song info from the item
+        const songName = item.song ? item.song.name : item.name.split(' - ')[1];
+        const intro = item.introNum || 0;
+        const outro = item.outroNum || 0;
+
+        let url = `${baseUrl}/stations/sa/${station.key}/play?song=${encodeURIComponent(songName)}`;
+        if (intro > 0) url += `&intro=${intro}`;
+        if (outro > 0) url += `&outro=${outro}`;
+        return url;
+    } else if (item.type === 'ad') {
+        return `${baseUrl}/segments/sa/play?advert=${encodeURIComponent(item.name)}`;
+    } else if (item.type === 'jingle') {
+        return `${baseUrl}/segments/sa/${station.key}/play?station_jingle=${encodeURIComponent(item.name)}`;
+    } else if (item.type === 'segment') {
+        // Determine segment type from name or segment object
+        const segmentType = item.segmentType || 'dj_talk';
+        const segmentName = item.name.replace(/^\[(.*?)\]\s*/, ''); // Remove prefix like [DJ], [Weather]
+        return `${baseUrl}/segments/sa/${station.key}/play?${segmentType}=${encodeURIComponent(segmentName)}`;
+    }
+
+    return null;
+}
+
 // Generate playlist - uses all available songs
 function generatePlaylist() {
     if (!currentStation) return;
-    
+
     generateBtn.classList.add('loading');
-    
+
     setTimeout(() => {
         const includeAds = includeAdsCheckbox.checked;
         const includeWeather = includeWeatherCheckbox.checked;
         const includeBridges = includeBridgesCheckbox.checked;
-        
+
         // Use ALL songs from the station
         const songs = currentStation.songs.map(s => ({...s}));
         const iterations = songs.length; // Play all songs
-        
+
         const jingles = [...(currentStation.segments.station_jingle || [])];
         const bridges = [...(currentStation.segments.bridge_announcement || [])];
         const callers = [...(currentStation.segments.caller || [])];
@@ -211,10 +329,10 @@ function generatePlaylist() {
         const djTalk = [...(currentStation.segments.dj_talk || [])];
         const story = [...(currentStation.segments.story || [])];
         const ads = adsData.map(a => ({...a}));
-        
+
         generatedPlaylist = [];
         const stats = { songs: 0, jingles: 0, ads: 0, segments: 0 };
-        
+
         for (let i = 0; i < iterations && songs.length > 0; i++) {
             // 1. Jingle (optional, ~70% chance)
             if (jingles.length > 0 && Math.random() < 0.7) {
@@ -222,34 +340,40 @@ function generatePlaylist() {
                 generatedPlaylist.push({
                     type: 'jingle',
                     name: jingle.name,
-                    path: buildSegmentPath(jingle, currentStation)
+                    path: buildSegmentPath(jingle, currentStation),
+                    segment: jingle
                 });
                 stats.jingles++;
             }
-            
+
             // 2. Bridge announcement (rare, ~8% chance)
             if (includeBridges && bridges.length > 0 && Math.random() < 0.08) {
                 const bridge = randomPick(bridges);
                 generatedPlaylist.push({
                     type: 'segment',
                     name: `[Bridge] ${bridge.name}`,
-                    path: buildSegmentPath(bridge, currentStation)
+                    path: buildSegmentPath(bridge, currentStation),
+                    segment: bridge,
+                    segmentType: 'bridge_announcement'
                 });
                 stats.segments++;
             }
-            
+
             // 3. Song (mandatory)
             const song = randomPick(songs);
             const introNum = song.intro_count > 0 ? Math.floor(Math.random() * song.intro_count) + 1 : 0;
             const outroNum = song.outro_count > 0 ? Math.floor(Math.random() * song.outro_count) + 1 : 0;
-            
+
             generatedPlaylist.push({
                 type: 'song',
                 name: `${song.artists.join(', ')} - ${song.name}`,
-                path: buildSongPath(song, currentStation, introNum, outroNum)
+                path: buildSongPath(song, currentStation, introNum, outroNum),
+                song: song,
+                introNum: introNum,
+                outroNum: outroNum
             });
             stats.songs++;
-            
+
             // 4. One extra segment after song
             const segmentTypes = [];
             if (djTalk.length > 0) segmentTypes.push('dj_talk');
@@ -257,7 +381,7 @@ function generatePlaylist() {
             if (story.length > 0) segmentTypes.push('story');
             if (includeWeather && weather.length > 0) segmentTypes.push('weather');
             if (includeAds && ads.length > 0) segmentTypes.push('ad');
-            
+
             if (segmentTypes.length > 0) {
                 let chosenType;
                 if (includeAds && ads.length > 0 && Math.random() < 0.2) {
@@ -270,7 +394,7 @@ function generatePlaylist() {
                         chosenType = 'ad';
                     }
                 }
-                
+
                 if (chosenType) {
                     let segment;
                     switch (chosenType) {
@@ -280,7 +404,8 @@ function generatePlaylist() {
                                 generatedPlaylist.push({
                                     type: 'ad',
                                     name: segment.name,
-                                    path: buildAdPath(segment)
+                                    path: buildAdPath(segment),
+                                    ad: segment
                                 });
                                 stats.ads++;
                             }
@@ -291,7 +416,9 @@ function generatePlaylist() {
                                 generatedPlaylist.push({
                                     type: 'segment',
                                     name: `[DJ] ${segment.name}`,
-                                    path: buildSegmentPath(segment, currentStation)
+                                    path: buildSegmentPath(segment, currentStation),
+                                    segment: segment,
+                                    segmentType: 'dj_talk'
                                 });
                                 stats.segments++;
                             }
@@ -302,7 +429,9 @@ function generatePlaylist() {
                                 generatedPlaylist.push({
                                     type: 'segment',
                                     name: `[Caller] ${segment.name}`,
-                                    path: buildSegmentPath(segment, currentStation)
+                                    path: buildSegmentPath(segment, currentStation),
+                                    segment: segment,
+                                    segmentType: 'caller'
                                 });
                                 stats.segments++;
                             }
@@ -313,7 +442,9 @@ function generatePlaylist() {
                                 generatedPlaylist.push({
                                     type: 'segment',
                                     name: `[Weather] ${segment.name}`,
-                                    path: buildSegmentPath(segment, currentStation)
+                                    path: buildSegmentPath(segment, currentStation),
+                                    segment: segment,
+                                    segmentType: 'weather'
                                 });
                                 stats.segments++;
                             }
@@ -324,7 +455,9 @@ function generatePlaylist() {
                                 generatedPlaylist.push({
                                     type: 'segment',
                                     name: `[Story] ${segment.name}`,
-                                    path: buildSegmentPath(segment, currentStation)
+                                    path: buildSegmentPath(segment, currentStation),
+                                    segment: segment,
+                                    segmentType: 'story'
                                 });
                                 stats.segments++;
                             }
@@ -333,9 +466,160 @@ function generatePlaylist() {
                 }
             }
         }
-        
+
         updatePreview(stats);
         generateBtn.classList.remove('loading');
+    }, 100);
+}
+
+// Generate and play for online mode
+function generateAndPlay() {
+    if (!currentStation) return;
+
+    generateBtn.classList.add('loading');
+
+    setTimeout(() => {
+        const includeAds = includeAdsCheckbox.checked;
+        const includeWeather = includeWeatherCheckbox.checked;
+        const includeBridges = includeBridgesCheckbox.checked;
+
+        // Use ALL songs from the station
+        const songs = currentStation.songs.map(s => ({...s}));
+        const iterations = songs.length;
+
+        const jingles = [...(currentStation.segments.station_jingle || [])];
+        const bridges = [...(currentStation.segments.bridge_announcement || [])];
+        const callers = [...(currentStation.segments.caller || [])];
+        const weather = [...(currentStation.segments.weather || [])];
+        const djTalk = [...(currentStation.segments.dj_talk || [])];
+        const story = [...(currentStation.segments.story || [])];
+        const ads = adsData.map(a => ({...a}));
+
+        generatedPlaylist = [];
+
+        for (let i = 0; i < iterations && songs.length > 0; i++) {
+            // Same playlist generation logic as offline mode
+            if (jingles.length > 0 && Math.random() < 0.7) {
+                const jingle = randomPick(jingles);
+                generatedPlaylist.push({
+                    type: 'jingle',
+                    name: jingle.name,
+                    segment: jingle
+                });
+            }
+
+            if (includeBridges && bridges.length > 0 && Math.random() < 0.08) {
+                const bridge = randomPick(bridges);
+                generatedPlaylist.push({
+                    type: 'segment',
+                    name: `[Bridge] ${bridge.name}`,
+                    segment: bridge,
+                    segmentType: 'bridge_announcement'
+                });
+            }
+
+            const song = randomPick(songs);
+            const introNum = song.intro_count > 0 ? Math.floor(Math.random() * song.intro_count) + 1 : 0;
+            const outroNum = song.outro_count > 0 ? Math.floor(Math.random() * song.outro_count) + 1 : 0;
+
+            generatedPlaylist.push({
+                type: 'song',
+                name: `${song.artists.join(', ')} - ${song.name}`,
+                song: song,
+                introNum: introNum,
+                outroNum: outroNum
+            });
+
+            const segmentTypes = [];
+            if (djTalk.length > 0) segmentTypes.push('dj_talk');
+            if (callers.length > 0) segmentTypes.push('caller');
+            if (story.length > 0) segmentTypes.push('story');
+            if (includeWeather && weather.length > 0) segmentTypes.push('weather');
+            if (includeAds && ads.length > 0) segmentTypes.push('ad');
+
+            if (segmentTypes.length > 0) {
+                let chosenType;
+                if (includeAds && ads.length > 0 && Math.random() < 0.2) {
+                    chosenType = 'ad';
+                } else {
+                    const nonAdTypes = segmentTypes.filter(t => t !== 'ad');
+                    if (nonAdTypes.length > 0) {
+                        chosenType = randomChoice(nonAdTypes);
+                    } else if (segmentTypes.includes('ad')) {
+                        chosenType = 'ad';
+                    }
+                }
+
+                if (chosenType) {
+                    let segment;
+                    switch (chosenType) {
+                        case 'ad':
+                            segment = randomPick(ads);
+                            if (segment) {
+                                generatedPlaylist.push({
+                                    type: 'ad',
+                                    name: segment.name,
+                                    ad: segment
+                                });
+                            }
+                            break;
+                        case 'dj_talk':
+                            segment = randomPick(djTalk);
+                            if (segment) {
+                                generatedPlaylist.push({
+                                    type: 'segment',
+                                    name: `[DJ] ${segment.name}`,
+                                    segment: segment,
+                                    segmentType: 'dj_talk'
+                                });
+                            }
+                            break;
+                        case 'caller':
+                            segment = randomPick(callers);
+                            if (segment) {
+                                generatedPlaylist.push({
+                                    type: 'segment',
+                                    name: `[Caller] ${segment.name}`,
+                                    segment: segment,
+                                    segmentType: 'caller'
+                                });
+                            }
+                            break;
+                        case 'weather':
+                            segment = randomPick(weather);
+                            if (segment) {
+                                generatedPlaylist.push({
+                                    type: 'segment',
+                                    name: `[Weather] ${segment.name}`,
+                                    segment: segment,
+                                    segmentType: 'weather'
+                                });
+                            }
+                            break;
+                        case 'story':
+                            segment = randomPick(story);
+                            if (segment) {
+                                generatedPlaylist.push({
+                                    type: 'segment',
+                                    name: `[Story] ${segment.name}`,
+                                    segment: segment,
+                                    segmentType: 'story'
+                                });
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+
+        // Start playback
+        currentTrackIndex = 0;
+        audioPlayerDiv.classList.remove('hidden');
+        updateQueue();
+        playTrack(0);
+
+        generateBtn.classList.remove('loading');
+        audioPlayerDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
 }
 
@@ -399,6 +683,162 @@ function downloadM3U() {
     document.body.removeChild(a);
     
     URL.revokeObjectURL(url);
+}
+
+// Audio Player Functions
+function playTrack(index) {
+    if (index < 0 || index >= generatedPlaylist.length) return;
+
+    currentTrackIndex = index;
+    const track = generatedPlaylist[index];
+
+    // Build API URL
+    const url = buildApiUrl(track, currentStation);
+    if (!url) {
+        console.error('Could not build URL for track:', track);
+        playNext();
+        return;
+    }
+
+    // Update UI
+    updateNowPlaying(track);
+    updateQueue();
+
+    // Load and play audio
+    audioElement.src = url;
+    audioElement.load();
+    audioElement.play().then(() => {
+        isPlaying = true;
+        updatePlayPauseButton();
+    }).catch(err => {
+        console.error('Playback error:', err);
+        playNext();
+    });
+}
+
+function togglePlayPause() {
+    if (!audioElement.src) return;
+
+    if (isPlaying) {
+        audioElement.pause();
+        isPlaying = false;
+    } else {
+        audioElement.play().then(() => {
+            isPlaying = true;
+        }).catch(err => {
+            console.error('Play error:', err);
+        });
+    }
+    updatePlayPauseButton();
+}
+
+function playNext() {
+    if (currentTrackIndex < generatedPlaylist.length - 1) {
+        playTrack(currentTrackIndex + 1);
+    } else {
+        // Loop back to start
+        playTrack(0);
+    }
+}
+
+function playPrevious() {
+    if (currentTrackIndex > 0) {
+        playTrack(currentTrackIndex - 1);
+    } else {
+        // Go to last track
+        playTrack(generatedPlaylist.length - 1);
+    }
+}
+
+function stopAudio() {
+    try {
+        if (audioElement && audioElement.src) {
+            audioElement.pause();
+            audioElement.currentTime = 0;
+            audioElement.src = '';
+            audioElement.load();
+        }
+        isPlaying = false;
+        currentTrackIndex = 0;
+
+        // Reset UI
+        if (playIcon && pauseIcon && playPauseBtn) {
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
+            playPauseBtn.title = 'Play';
+        }
+
+        // Reset time displays
+        if (timeCurrent) timeCurrent.textContent = '0:00';
+        if (timeTotal) timeTotal.textContent = '0:00';
+        if (seekSlider) seekSlider.value = 0;
+
+        // Reset track info
+        if (trackName) trackName.textContent = '-';
+        if (trackArtist) trackArtist.textContent = '-';
+    } catch (error) {
+        console.error('Error stopping audio:', error);
+    }
+}
+
+function updatePlayPauseButton() {
+    if (isPlaying) {
+        playIcon.style.display = 'none';
+        pauseIcon.style.display = 'block';
+        playPauseBtn.title = 'Pause';
+    } else {
+        playIcon.style.display = 'block';
+        pauseIcon.style.display = 'none';
+        playPauseBtn.title = 'Play';
+    }
+}
+
+function updateNowPlaying(track) {
+    if (track.type === 'song') {
+        const parts = track.name.split(' - ');
+        trackArtist.textContent = parts[0] || 'Unknown Artist';
+        trackName.textContent = parts[1] || track.name;
+    } else if (track.type === 'ad') {
+        trackArtist.textContent = 'Advertisement';
+        trackName.textContent = track.name;
+    } else if (track.type === 'jingle') {
+        trackArtist.textContent = currentStation.name;
+        trackName.textContent = 'Station Jingle';
+    } else {
+        trackArtist.textContent = currentStation.name;
+        trackName.textContent = track.name;
+    }
+}
+
+function updateQueue() {
+    queueCount.textContent = `${generatedPlaylist.length} tracks`;
+
+    // Show next 10 tracks
+    const upNext = generatedPlaylist.slice(currentTrackIndex + 1, currentTrackIndex + 11);
+
+    if (upNext.length === 0) {
+        queueList.innerHTML = '<div class="queue-item empty">No more tracks</div>';
+        return;
+    }
+
+    queueList.innerHTML = upNext.map((track, idx) => {
+        const actualIndex = currentTrackIndex + 1 + idx;
+        let displayName = track.name;
+
+        if (track.type === 'song') {
+            const parts = track.name.split(' - ');
+            displayName = parts[1] || track.name;
+        } else if (track.type === 'jingle') {
+            displayName = 'Station Jingle';
+        }
+
+        return `
+            <div class="queue-item ${track.type}" onclick="playTrack(${actualIndex})">
+                <span class="queue-index">${actualIndex + 1}</span>
+                <span class="queue-name">${displayName}</span>
+            </div>
+        `;
+    }).join('');
 }
 
 // Start
