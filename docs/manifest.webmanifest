@@ -1,7 +1,7 @@
 {
-  "name": "GTA San Andreas Radio Playlist Generator",
+  "name": "GTA San Andreas Radio",
   "short_name": "GTA SA Radio",
-  "description": "Generate authentic GTA San Andreas radio playlists",
+  "description": "Generate and listen to authentic GTA San Andreas radio playlists.",
   "start_url": "/gta-sa-radio/",
   "scope": "/gta-sa-radio/",
   "display": "standalone",
