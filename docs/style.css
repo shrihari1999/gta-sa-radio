@@ -313,6 +313,7 @@ input[type="text"]::placeholder {
     padding: 18px;
     border: none;
     border-radius: 8px;
+    font-family: var(--font-body);
     font-size: 1.5rem;
     letter-spacing: 3px;
     cursor: pointer;
@@ -328,6 +329,7 @@ input[type="text"]::placeholder {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(183, 210, 243, 0.4);
     background: linear-gradient(to bottom, var(--gta-blue-light), var(--gta-blue));
+    color: black;
 }
 
 .generate-btn:disabled {
@@ -364,7 +366,7 @@ input[type="text"]::placeholder {
 }
 
 .preview h3 {
-    font-family: var(--font-heading);
+    font-family: var(--font-body);
     font-size: 1.3rem;
     color: var(--gta-blue);
     text-align: center;
