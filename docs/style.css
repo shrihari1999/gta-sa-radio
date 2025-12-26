@@ -56,12 +56,19 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url('assets/bgs/los-santos.png');
+    background-image: url('assets/bgs/vinewood.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     z-index: -2;
     transition: background-image 0.5s ease;
+}
+
+@media screen and (max-width: 1167px) {
+  body::before {
+    background-size: cover;
+    background-position: top right;
+  }
 }
 
 .bg-overlay {
