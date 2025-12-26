@@ -4,7 +4,7 @@ let stationsData = [];
 let adsData = [];
 let generatedPlaylist = [];
 let currentStation = null;
-let currentMode = 'offline'; // 'offline' or 'online'
+let currentMode = 'online'; // 'offline' or 'online'
 let audioPlayer = null;
 let currentTrackIndex = 0;
 let isPlaying = false;
@@ -81,12 +81,16 @@ async function init() {
         // Ensure correct initial state based on default mode
         if (currentMode === 'offline') {
             basePathCard.classList.remove('hidden');
+            footer.classList.remove('hidden');
             audioPlayerDiv.classList.add('hidden');
             previewSection.classList.add('hidden');
+            generateBtn.textContent = 'GENERATE PLAYLIST';
         } else {
             basePathCard.classList.add('hidden');
+            footer.classList.add('hidden');
             audioPlayerDiv.classList.add('hidden');
             previewSection.classList.add('hidden');
+            generateBtn.textContent = 'START LISTENING';
         }
 
     } catch (error) {
@@ -144,12 +148,14 @@ function setupModeToggle() {
                 footer.classList.remove('hidden');
                 audioPlayerDiv.classList.add('hidden');
                 previewSection.classList.add('hidden');
+                generateBtn.classList.remove('hidden');
                 generateBtn.textContent = 'GENERATE PLAYLIST';
             } else {
                 basePathCard.classList.add('hidden');
                 footer.classList.add('hidden');
                 previewSection.classList.add('hidden');
                 audioPlayerDiv.classList.add('hidden');
+                generateBtn.classList.remove('hidden');
                 generateBtn.textContent = 'START LISTENING';
             }
         });
@@ -225,8 +231,9 @@ function setupEventListeners() {
         const stationKey = stationIcon.dataset.station;
         currentStation = stationsData.find(s => s.key === stationKey);
 
-        // Enable generate button
+        // Enable and show generate button
         generateBtn.disabled = false;
+        generateBtn.classList.remove('hidden');
 
         // Hide preview and player if showing
         previewSection.classList.add('hidden');
@@ -627,6 +634,7 @@ function generateAndPlay() {
         playTrack(0);
 
         generateBtn.classList.remove('loading');
+        generateBtn.classList.add('hidden'); // Hide button after starting playback
         audioPlayerDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
 }
@@ -737,8 +745,13 @@ function playNext() {
     if (currentTrackIndex < generatedPlaylist.length - 1) {
         playTrack(currentTrackIndex + 1);
     } else {
-        // Loop back to start
-        playTrack(0);
+        // Generate new playlist when current one ends (only in online mode)
+        if (currentMode === 'online') {
+            generateAndPlay();
+        } else {
+            // In offline mode, loop back to start
+            playTrack(0);
+        }
     }
 }
 
@@ -804,7 +817,12 @@ function updateNowPlaying(track) {
         trackName.textContent = track.name;
     } else if (track.type === 'jingle') {
         trackArtist.textContent = currentStation.name;
-        trackName.textContent = 'Station Jingle';
+        trackName.textContent = track.name;
+    } else if (track.type === 'segment') {
+        // Remove [Type] prefix from segment names
+        const nameWithoutPrefix = track.name.replace(/^\[.*?\]\s*/, '');
+        trackArtist.textContent = currentStation.name;
+        trackName.textContent = nameWithoutPrefix;
     } else {
         trackArtist.textContent = currentStation.name;
         trackName.textContent = track.name;
@@ -827,11 +845,13 @@ function updateQueue() {
         let displayName = track.name;
 
         if (track.type === 'song') {
-            const parts = track.name.split(' - ');
-            displayName = parts[1] || track.name;
+            displayName = `[Song] ${track.name}`;
         } else if (track.type === 'jingle') {
-            displayName = 'Station Jingle';
+            displayName = `[Jingle] ${track.name}`;
+        } else if (track.type === 'ad') {
+            displayName = `[Ad] ${track.name}`;
         }
+        // For segments, the name already includes the type prefix like [DJ], [Caller], etc.
 
         return `
             <div class="queue-item ${track.type}" onclick="playTrack(${actualIndex})">
