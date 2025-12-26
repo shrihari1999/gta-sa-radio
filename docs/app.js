@@ -35,10 +35,9 @@ const STATION_ICONS = {
 
 // DOM Elements
 const stationGrid = document.getElementById('station-grid');
-const selectedStationDiv = document.getElementById('selected-station');
-const selectedNameSpan = document.getElementById('selected-name');
 const basePathInput = document.getElementById('base-path');
 const basePathCard = document.getElementById('base-path-card');
+const footer = document.getElementById('footer');
 const includeAdsCheckbox = document.getElementById('include-ads');
 const includeWeatherCheckbox = document.getElementById('include-weather');
 const includeBridgesCheckbox = document.getElementById('include-bridges');
@@ -142,11 +141,13 @@ function setupModeToggle() {
             // Toggle UI visibility
             if (currentMode === 'offline') {
                 basePathCard.classList.remove('hidden');
+                footer.classList.remove('hidden');
                 audioPlayerDiv.classList.add('hidden');
                 previewSection.classList.add('hidden');
                 generateBtn.textContent = 'GENERATE PLAYLIST';
             } else {
                 basePathCard.classList.add('hidden');
+                footer.classList.add('hidden');
                 previewSection.classList.add('hidden');
                 audioPlayerDiv.classList.add('hidden');
                 generateBtn.textContent = 'START LISTENING';
@@ -194,6 +195,17 @@ function setupAudioPlayer() {
         // Try next track on error
         playNext();
     });
+
+    // Update play/pause button when audio state changes
+    audioElement.addEventListener('play', () => {
+        isPlaying = true;
+        updatePlayPauseButton();
+    });
+
+    audioElement.addEventListener('pause', () => {
+        isPlaying = false;
+        updatePlayPauseButton();
+    });
 }
 
 function setupEventListeners() {
@@ -212,10 +224,6 @@ function setupEventListeners() {
         // Set current station
         const stationKey = stationIcon.dataset.station;
         currentStation = stationsData.find(s => s.key === stationKey);
-
-        // Update selected display
-        selectedNameSpan.textContent = currentStation.name;
-        selectedStationDiv.classList.remove('hidden');
 
         // Enable generate button
         generateBtn.disabled = false;
@@ -707,10 +715,7 @@ function playTrack(index) {
     // Load and play audio
     audioElement.src = url;
     audioElement.load();
-    audioElement.play().then(() => {
-        isPlaying = true;
-        updatePlayPauseButton();
-    }).catch(err => {
+    audioElement.play().catch(err => {
         console.error('Playback error:', err);
         playNext();
     });
@@ -721,15 +726,11 @@ function togglePlayPause() {
 
     if (isPlaying) {
         audioElement.pause();
-        isPlaying = false;
     } else {
-        audioElement.play().then(() => {
-            isPlaying = true;
-        }).catch(err => {
+        audioElement.play().catch(err => {
             console.error('Play error:', err);
         });
     }
-    updatePlayPauseButton();
 }
 
 function playNext() {

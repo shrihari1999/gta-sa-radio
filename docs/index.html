@@ -24,10 +24,6 @@
                 <!-- Stations will be populated by JS -->
             </div>
 
-            <div id="selected-station" class="selected-station hidden">
-                <span id="selected-name"></span>
-            </div>
-
             <!-- Mode Toggle -->
             <div class="card mode-card">
                 <div class="mode-toggle">
@@ -37,7 +33,7 @@
             </div>
 
             <!-- Options -->
-            <div class="card options-card">
+            <div class="card options-card" style="display: none;">
                 <div class="checkbox-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="include-ads" checked>
@@ -122,7 +118,7 @@
             </div>
         </main>
 
-        <footer>
+        <footer id="footer">
             <p>Place the .m3u file in your audio folder</p>
         </footer>
     </div>
