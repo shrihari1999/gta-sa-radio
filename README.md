@@ -2,8 +2,7 @@
 
 A web app that lets you experience authentic GTA San Andreas radio stations. Stream directly online or generate playlists for offline use.
 
-Click [here](https://shrihari1999.github.io/gta-sa-radio/)
-to use the app.
+[Live App](https://shrihari1999.github.io/gta-sa-radio/)
 
 ## Features
 

@@ -8,6 +8,8 @@ let currentMode = 'online'; // 'offline' or 'online'
 let audioPlayer = null;
 let currentTrackIndex = 0;
 let isPlaying = false;
+let preloadAudio = null; // For preloading next track
+let preloadedIndex = -1; // Index of preloaded track
 
 // File path mappings
 const SEGMENT_FOLDERS = {
@@ -720,13 +722,58 @@ function playTrack(index) {
     updateNowPlaying(track);
     updateQueue();
 
-    // Load and play audio
-    audioElement.src = url;
-    audioElement.load();
-    audioElement.play().catch(err => {
-        console.error('Playback error:', err);
-        playNext();
-    });
+    // Check if this track was preloaded
+    if (preloadAudio && preloadedIndex === index) {
+        // Use preloaded audio
+        audioElement.src = preloadAudio.src;
+        audioElement.load();
+        audioElement.play().catch(err => {
+            console.error('Playback error:', err);
+            playNext();
+        });
+    } else {
+        // Load and play audio normally
+        audioElement.src = url;
+        audioElement.load();
+        audioElement.play().catch(err => {
+            console.error('Playback error:', err);
+            playNext();
+        });
+    }
+
+    // Preload next track
+    preloadNextTrack();
+}
+
+// Preload the next track for seamless playback
+function preloadNextTrack() {
+    const nextIndex = currentTrackIndex + 1;
+
+    // Don't preload if we're at the end (new playlist will be generated)
+    if (nextIndex >= generatedPlaylist.length) {
+        preloadAudio = null;
+        preloadedIndex = -1;
+        return;
+    }
+
+    const nextTrack = generatedPlaylist[nextIndex];
+    const nextUrl = buildApiUrl(nextTrack, currentStation);
+
+    if (!nextUrl) {
+        preloadAudio = null;
+        preloadedIndex = -1;
+        return;
+    }
+
+    // Create or reuse preload audio element
+    if (!preloadAudio) {
+        preloadAudio = new Audio();
+        preloadAudio.preload = 'auto';
+    }
+
+    preloadAudio.src = nextUrl;
+    preloadAudio.load();
+    preloadedIndex = nextIndex;
 }
 
 function togglePlayPause() {
@@ -772,6 +819,14 @@ function stopAudio() {
             audioElement.src = '';
             audioElement.load();
         }
+
+        // Clean up preload audio
+        if (preloadAudio) {
+            preloadAudio.src = '';
+            preloadAudio = null;
+            preloadedIndex = -1;
+        }
+
         isPlaying = false;
         currentTrackIndex = 0;
 
