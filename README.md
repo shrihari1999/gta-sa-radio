@@ -1,8 +1,37 @@
-# GTA San Andreas Radio Playlist Generator
+# GTA San Andreas Radio
 
-A static web app that generates authentic GTA San Andreas-style radio playlists as .m3u files.
+A web app that lets you experience authentic GTA San Andreas radio stations. Stream directly online or generate playlists for offline use.
 
-## 📁 Audio File Structure
+## Features
+
+- **Online Mode** - Stream radio directly in the browser with a built-in audio player
+- **Offline Mode** - Generate .m3u playlists for use with local audio files
+- **11 Radio Stations** - All music stations from GTA San Andreas
+- **Authentic Experience** - Songs, DJ talk, callers, jingles, weather reports, and advertisements
+- **Continuous Playback** - Auto-generates new playlists when the current one ends
+- **PWA Support** - Install as an app on mobile or desktop
+
+## Usage
+
+### Online Mode (Default)
+
+1. Open the website
+2. Select a radio station
+3. Tap **START LISTENING**
+4. Enjoy the stream with the built-in player
+
+The player shows the current track, progress bar, and upcoming queue. When the playlist ends, a new one is automatically generated.
+
+### Offline Mode
+
+1. Switch to **OFFLINE MODE**
+2. Select a radio station
+3. Set your base path (where your audio files are stored)
+4. Tap **GENERATE PLAYLIST**
+5. Tap **DOWNLOAD .M3U**
+6. Place the file in your audio folder and open with any music player
+
+## Audio File Structure (Offline Mode)
 
 Organize your audio files like this:
 
@@ -27,43 +56,35 @@ Music/gta_sa_audio/
     └── ...
 ```
 
-## 📱 Usage
-
-1. Open the website
-2. Select a background (optional)
-3. Tap a station icon
-4. Configure options (ads, weather, bridges)
-5. Tap **GENERATE PLAYLIST**
-6. Tap **DOWNLOAD .M3U**
-7. Place the file in your audio folder
-8. Open with any music player
-
-## 🏠 PWA Installation
-
-This app can be installed as a Progressive Web App (PWA) on supported devices:
+## PWA Installation
 
 ### Android (Chrome)
 1. Open the website in Chrome
-2. Tap the menu (three dots) in the top right
+2. Tap the menu (three dots)
 3. Select "Add to Home screen"
-4. Follow the prompts to install
+
+### iOS (Safari)
+1. Open the website in Safari
+2. Tap the Share button
+3. Select "Add to Home Screen"
 
 ### Desktop (Chrome/Edge)
 1. Open the website
-2. Click the install icon in the address bar or menu
-3. Follow the prompts
+2. Click the install icon in the address bar
 
-Once installed, the app will work offline and can be launched from your home screen like a native app.
+## Playlist Logic
 
-## 🎵 Playlist Logic
+Each playlist includes:
+- **Jingles** (70% chance between songs)
+- **Bridge Announcements** (8% chance)
+- **Songs** (all station songs, randomized)
+- **Segments** (DJ talk, callers, weather, stories)
+- **Advertisements** (20% chance)
 
-- **Jingle** (70% chance)
-- **Bridge Announcement** (8% chance)
-- **Song** (always, uses all station songs)
-- **Extra segment** (DJ talk, caller, weather, story, or ad)
+No content repeats within a single playlist.
 
-No content repeats within a playlist!
+## Credits
 
-## 📄 License
+Audio streamed via [gtatunes.net](https://gtatunes.net) API.
 
-For personal use only. GTA San Andreas © Rockstar Games.
+GTA San Andreas © Rockstar Games. For personal use only.
