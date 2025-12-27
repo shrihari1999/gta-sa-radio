@@ -77,16 +77,16 @@ Music/gta_sa_audio/
 ## Playlist Logic
 
 ### Music Stations
-- **Jingles** (70% chance between songs)
-- **Bridge Announcements** (8% chance)
-- **Songs** (all station songs, randomized)
-- **Segments** (DJ talk, callers, weather, stories)
-- **Advertisements** (20% chance)
+Each iteration follows this order:
+1. **Jingle** (70% chance)
+2. **Segment** - one of: Bridge announcement, Weather, DJ talk, Caller, or Story
+3. **Song** (all station songs played, randomized)
+4. **Advertisement** (20% chance)
 
 ### WCTR (Talk Radio)
-- **Jingles** (70% chance between segments)
-- **Talk Segments** (host commentary, callers, stories)
-- **Advertisements** (25% chance)
+1. **Jingle** (70% chance)
+2. **Talk Show Episode** (all episodes played in order by episode number)
+3. **Advertisement** (25% chance)
 
 No content repeats within a single playlist.
 
