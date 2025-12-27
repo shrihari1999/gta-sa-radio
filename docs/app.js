@@ -102,12 +102,9 @@ async function init() {
 }
 
 function populateStationGrid() {
-    // Filter out talk radio (WCTR)
-    const musicStations = stationsData.filter(s => s.key !== 'wctr');
-    
     stationGrid.innerHTML = '';
-    
-    musicStations.forEach(station => {
+
+    stationsData.forEach(station => {
         const iconFile = STATION_ICONS[station.key] || `${station.key}.webp`;
         
         const div = document.createElement('div');
@@ -324,169 +321,237 @@ function buildApiUrl(item, station) {
     return null;
 }
 
-// Generate playlist - uses all available songs
+// Generate playlist - uses all available songs (or talk segments for WCTR)
 function generatePlaylist() {
     if (!currentStation) return;
 
     generateBtn.classList.add('loading');
 
     setTimeout(() => {
-        const includeAds = includeAdsCheckbox.checked;
-        const includeWeather = includeWeatherCheckbox.checked;
-        const includeBridges = includeBridgesCheckbox.checked;
+        // Check if this is WCTR (talk radio)
+        if (currentStation.key === 'wctr') {
+            generateWCTRPlaylistOffline();
+        } else {
+            generateMusicPlaylistOffline();
+        }
 
-        // Use ALL songs from the station
-        const songs = currentStation.songs.map(s => ({...s}));
-        const iterations = songs.length; // Play all songs
+        generateBtn.classList.remove('loading');
+    }, 100);
+}
 
-        const jingles = [...(currentStation.segments.station_jingle || [])];
-        const bridges = [...(currentStation.segments.bridge_announcement || [])];
-        const callers = [...(currentStation.segments.caller || [])];
-        const weather = [...(currentStation.segments.weather || [])];
-        const djTalk = [...(currentStation.segments.dj_talk || [])];
-        const story = [...(currentStation.segments.story || [])];
-        const ads = adsData.map(a => ({...a}));
+// Generate offline playlist for WCTR (talk radio)
+function generateWCTRPlaylistOffline() {
+    const includeAds = includeAdsCheckbox.checked;
 
-        generatedPlaylist = [];
-        const stats = { songs: 0, jingles: 0, ads: 0, segments: 0 };
+    // WCTR stores talk shows as "songs" in the data structure
+    // Order them: all Episode 1s (shuffled), then Episode 2s, etc.
+    const talkShows = orderWCTREpisodes(currentStation.songs);
 
-        for (let i = 0; i < iterations && songs.length > 0; i++) {
-            // 1. Jingle (optional, ~70% chance)
-            if (jingles.length > 0 && Math.random() < 0.7) {
-                const jingle = randomPick(jingles);
-                generatedPlaylist.push({
-                    type: 'jingle',
-                    name: jingle.name,
-                    path: buildSegmentPath(jingle, currentStation),
-                    segment: jingle
-                });
-                stats.jingles++;
-            }
+    const jingles = [...(currentStation.segments.station_jingle || [])];
+    const ads = adsData.map(a => ({...a}));
 
-            // 2. Bridge announcement (rare, ~8% chance)
-            if (includeBridges && bridges.length > 0 && Math.random() < 0.08) {
-                const bridge = randomPick(bridges);
-                generatedPlaylist.push({
-                    type: 'segment',
-                    name: `[Bridge] ${bridge.name}`,
-                    path: buildSegmentPath(bridge, currentStation),
-                    segment: bridge,
-                    segmentType: 'bridge_announcement'
-                });
-                stats.segments++;
-            }
+    generatedPlaylist = [];
+    const stats = { songs: 0, jingles: 0, ads: 0, segments: 0 };
 
-            // 3. Song (mandatory)
-            const song = randomPick(songs);
-            const introNum = song.intro_count > 0 ? Math.floor(Math.random() * song.intro_count) + 1 : 0;
-            const outroNum = song.outro_count > 0 ? Math.floor(Math.random() * song.outro_count) + 1 : 0;
-
+    for (let i = 0; i < talkShows.length; i++) {
+        // Jingle (70% chance)
+        if (jingles.length > 0 && Math.random() < 0.7) {
+            const jingle = randomPick(jingles);
             generatedPlaylist.push({
-                type: 'song',
-                name: `${song.artists.join(', ')} - ${song.name}`,
-                path: buildSongPath(song, currentStation, introNum, outroNum),
-                song: song,
-                introNum: introNum,
-                outroNum: outroNum
+                type: 'jingle',
+                name: jingle.name,
+                path: buildSegmentPath(jingle, currentStation),
+                segment: jingle
             });
-            stats.songs++;
+            stats.jingles++;
+        }
 
-            // 4. One extra segment after song
-            const segmentTypes = [];
-            if (djTalk.length > 0) segmentTypes.push('dj_talk');
-            if (callers.length > 0) segmentTypes.push('caller');
-            if (story.length > 0) segmentTypes.push('story');
-            if (includeWeather && weather.length > 0) segmentTypes.push('weather');
-            if (includeAds && ads.length > 0) segmentTypes.push('ad');
+        // Talk show episode
+        const show = talkShows[i];
+        generatedPlaylist.push({
+            type: 'song',
+            name: `${show.artists.join(', ')} - ${show.name}`,
+            path: buildSongPath(show, currentStation, 0, 0),
+            song: show,
+            introNum: 0,
+            outroNum: 0
+        });
+        stats.songs++;
 
-            if (segmentTypes.length > 0) {
-                let chosenType;
-                if (includeAds && ads.length > 0 && Math.random() < 0.2) {
+        // Advertisement (25% chance for talk radio)
+        if (includeAds && ads.length > 0 && Math.random() < 0.25) {
+            const ad = randomPick(ads);
+            if (ad) {
+                generatedPlaylist.push({
+                    type: 'ad',
+                    name: ad.name,
+                    path: buildAdPath(ad),
+                    ad: ad
+                });
+                stats.ads++;
+            }
+        }
+    }
+
+    updatePreview(stats);
+}
+
+// Generate offline playlist for music stations
+function generateMusicPlaylistOffline() {
+    const includeAds = includeAdsCheckbox.checked;
+    const includeWeather = includeWeatherCheckbox.checked;
+    const includeBridges = includeBridgesCheckbox.checked;
+
+    // Use ALL songs from the station
+    const songs = currentStation.songs.map(s => ({...s}));
+    const iterations = songs.length; // Play all songs
+
+    const jingles = [...(currentStation.segments.station_jingle || [])];
+    const bridges = [...(currentStation.segments.bridge_announcement || [])];
+    const callers = [...(currentStation.segments.caller || [])];
+    const weather = [...(currentStation.segments.weather || [])];
+    const djTalk = [...(currentStation.segments.dj_talk || [])];
+    const story = [...(currentStation.segments.story || [])];
+    const ads = adsData.map(a => ({...a}));
+
+    generatedPlaylist = [];
+    const stats = { songs: 0, jingles: 0, ads: 0, segments: 0 };
+
+    for (let i = 0; i < iterations && songs.length > 0; i++) {
+        // 1. Jingle (optional, ~70% chance)
+        if (jingles.length > 0 && Math.random() < 0.7) {
+            const jingle = randomPick(jingles);
+            generatedPlaylist.push({
+                type: 'jingle',
+                name: jingle.name,
+                path: buildSegmentPath(jingle, currentStation),
+                segment: jingle
+            });
+            stats.jingles++;
+        }
+
+        // 2. Bridge announcement (rare, ~8% chance)
+        if (includeBridges && bridges.length > 0 && Math.random() < 0.08) {
+            const bridge = randomPick(bridges);
+            generatedPlaylist.push({
+                type: 'segment',
+                name: `[Bridge] ${bridge.name}`,
+                path: buildSegmentPath(bridge, currentStation),
+                segment: bridge,
+                segmentType: 'bridge_announcement'
+            });
+            stats.segments++;
+        }
+
+        // 3. Song (mandatory)
+        const song = randomPick(songs);
+        const introNum = song.intro_count > 0 ? Math.floor(Math.random() * song.intro_count) + 1 : 0;
+        const outroNum = song.outro_count > 0 ? Math.floor(Math.random() * song.outro_count) + 1 : 0;
+
+        generatedPlaylist.push({
+            type: 'song',
+            name: `${song.artists.join(', ')} - ${song.name}`,
+            path: buildSongPath(song, currentStation, introNum, outroNum),
+            song: song,
+            introNum: introNum,
+            outroNum: outroNum
+        });
+        stats.songs++;
+
+        // 4. One extra segment after song
+        const segmentTypes = [];
+        if (djTalk.length > 0) segmentTypes.push('dj_talk');
+        if (callers.length > 0) segmentTypes.push('caller');
+        if (story.length > 0) segmentTypes.push('story');
+        if (includeWeather && weather.length > 0) segmentTypes.push('weather');
+        if (includeAds && ads.length > 0) segmentTypes.push('ad');
+
+        if (segmentTypes.length > 0) {
+            let chosenType;
+            if (includeAds && ads.length > 0 && Math.random() < 0.2) {
+                chosenType = 'ad';
+            } else {
+                const nonAdTypes = segmentTypes.filter(t => t !== 'ad');
+                if (nonAdTypes.length > 0) {
+                    chosenType = randomChoice(nonAdTypes);
+                } else if (segmentTypes.includes('ad')) {
                     chosenType = 'ad';
-                } else {
-                    const nonAdTypes = segmentTypes.filter(t => t !== 'ad');
-                    if (nonAdTypes.length > 0) {
-                        chosenType = randomChoice(nonAdTypes);
-                    } else if (segmentTypes.includes('ad')) {
-                        chosenType = 'ad';
-                    }
                 }
+            }
 
-                if (chosenType) {
-                    let segment;
-                    switch (chosenType) {
-                        case 'ad':
-                            segment = randomPick(ads);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'ad',
-                                    name: segment.name,
-                                    path: buildAdPath(segment),
-                                    ad: segment
-                                });
-                                stats.ads++;
-                            }
-                            break;
-                        case 'dj_talk':
-                            segment = randomPick(djTalk);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'segment',
-                                    name: `[DJ] ${segment.name}`,
-                                    path: buildSegmentPath(segment, currentStation),
-                                    segment: segment,
-                                    segmentType: 'dj_talk'
-                                });
-                                stats.segments++;
-                            }
-                            break;
-                        case 'caller':
-                            segment = randomPick(callers);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'segment',
-                                    name: `[Caller] ${segment.name}`,
-                                    path: buildSegmentPath(segment, currentStation),
-                                    segment: segment,
-                                    segmentType: 'caller'
-                                });
-                                stats.segments++;
-                            }
-                            break;
-                        case 'weather':
-                            segment = randomPick(weather);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'segment',
-                                    name: `[Weather] ${segment.name}`,
-                                    path: buildSegmentPath(segment, currentStation),
-                                    segment: segment,
-                                    segmentType: 'weather'
-                                });
-                                stats.segments++;
-                            }
-                            break;
-                        case 'story':
-                            segment = randomPick(story);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'segment',
-                                    name: `[Story] ${segment.name}`,
-                                    path: buildSegmentPath(segment, currentStation),
-                                    segment: segment,
-                                    segmentType: 'story'
-                                });
-                                stats.segments++;
-                            }
-                            break;
-                    }
+            if (chosenType) {
+                let segment;
+                switch (chosenType) {
+                    case 'ad':
+                        segment = randomPick(ads);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'ad',
+                                name: segment.name,
+                                path: buildAdPath(segment),
+                                ad: segment
+                            });
+                            stats.ads++;
+                        }
+                        break;
+                    case 'dj_talk':
+                        segment = randomPick(djTalk);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'segment',
+                                name: `[DJ] ${segment.name}`,
+                                path: buildSegmentPath(segment, currentStation),
+                                segment: segment,
+                                segmentType: 'dj_talk'
+                            });
+                            stats.segments++;
+                        }
+                        break;
+                    case 'caller':
+                        segment = randomPick(callers);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'segment',
+                                name: `[Caller] ${segment.name}`,
+                                path: buildSegmentPath(segment, currentStation),
+                                segment: segment,
+                                segmentType: 'caller'
+                            });
+                            stats.segments++;
+                        }
+                        break;
+                    case 'weather':
+                        segment = randomPick(weather);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'segment',
+                                name: `[Weather] ${segment.name}`,
+                                path: buildSegmentPath(segment, currentStation),
+                                segment: segment,
+                                segmentType: 'weather'
+                            });
+                            stats.segments++;
+                        }
+                        break;
+                    case 'story':
+                        segment = randomPick(story);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'segment',
+                                name: `[Story] ${segment.name}`,
+                                path: buildSegmentPath(segment, currentStation),
+                                segment: segment,
+                                segmentType: 'story'
+                            });
+                            stats.segments++;
+                        }
+                        break;
                 }
             }
         }
+    }
 
-        updatePreview(stats);
-        generateBtn.classList.remove('loading');
-    }, 100);
+    updatePreview(stats);
 }
 
 // Generate and play for online mode
@@ -496,137 +561,11 @@ function generateAndPlay() {
     generateBtn.classList.add('loading');
 
     setTimeout(() => {
-        const includeAds = includeAdsCheckbox.checked;
-        const includeWeather = includeWeatherCheckbox.checked;
-        const includeBridges = includeBridgesCheckbox.checked;
-
-        // Use ALL songs from the station
-        const songs = currentStation.songs.map(s => ({...s}));
-        const iterations = songs.length;
-
-        const jingles = [...(currentStation.segments.station_jingle || [])];
-        const bridges = [...(currentStation.segments.bridge_announcement || [])];
-        const callers = [...(currentStation.segments.caller || [])];
-        const weather = [...(currentStation.segments.weather || [])];
-        const djTalk = [...(currentStation.segments.dj_talk || [])];
-        const story = [...(currentStation.segments.story || [])];
-        const ads = adsData.map(a => ({...a}));
-
-        generatedPlaylist = [];
-
-        for (let i = 0; i < iterations && songs.length > 0; i++) {
-            // Same playlist generation logic as offline mode
-            if (jingles.length > 0 && Math.random() < 0.7) {
-                const jingle = randomPick(jingles);
-                generatedPlaylist.push({
-                    type: 'jingle',
-                    name: jingle.name,
-                    segment: jingle
-                });
-            }
-
-            if (includeBridges && bridges.length > 0 && Math.random() < 0.08) {
-                const bridge = randomPick(bridges);
-                generatedPlaylist.push({
-                    type: 'segment',
-                    name: `[Bridge] ${bridge.name}`,
-                    segment: bridge,
-                    segmentType: 'bridge_announcement'
-                });
-            }
-
-            const song = randomPick(songs);
-            const introNum = song.intro_count > 0 ? Math.floor(Math.random() * song.intro_count) + 1 : 0;
-            const outroNum = song.outro_count > 0 ? Math.floor(Math.random() * song.outro_count) + 1 : 0;
-
-            generatedPlaylist.push({
-                type: 'song',
-                name: `${song.artists.join(', ')} - ${song.name}`,
-                song: song,
-                introNum: introNum,
-                outroNum: outroNum
-            });
-
-            const segmentTypes = [];
-            if (djTalk.length > 0) segmentTypes.push('dj_talk');
-            if (callers.length > 0) segmentTypes.push('caller');
-            if (story.length > 0) segmentTypes.push('story');
-            if (includeWeather && weather.length > 0) segmentTypes.push('weather');
-            if (includeAds && ads.length > 0) segmentTypes.push('ad');
-
-            if (segmentTypes.length > 0) {
-                let chosenType;
-                if (includeAds && ads.length > 0 && Math.random() < 0.2) {
-                    chosenType = 'ad';
-                } else {
-                    const nonAdTypes = segmentTypes.filter(t => t !== 'ad');
-                    if (nonAdTypes.length > 0) {
-                        chosenType = randomChoice(nonAdTypes);
-                    } else if (segmentTypes.includes('ad')) {
-                        chosenType = 'ad';
-                    }
-                }
-
-                if (chosenType) {
-                    let segment;
-                    switch (chosenType) {
-                        case 'ad':
-                            segment = randomPick(ads);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'ad',
-                                    name: segment.name,
-                                    ad: segment
-                                });
-                            }
-                            break;
-                        case 'dj_talk':
-                            segment = randomPick(djTalk);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'segment',
-                                    name: `[DJ] ${segment.name}`,
-                                    segment: segment,
-                                    segmentType: 'dj_talk'
-                                });
-                            }
-                            break;
-                        case 'caller':
-                            segment = randomPick(callers);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'segment',
-                                    name: `[Caller] ${segment.name}`,
-                                    segment: segment,
-                                    segmentType: 'caller'
-                                });
-                            }
-                            break;
-                        case 'weather':
-                            segment = randomPick(weather);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'segment',
-                                    name: `[Weather] ${segment.name}`,
-                                    segment: segment,
-                                    segmentType: 'weather'
-                                });
-                            }
-                            break;
-                        case 'story':
-                            segment = randomPick(story);
-                            if (segment) {
-                                generatedPlaylist.push({
-                                    type: 'segment',
-                                    name: `[Story] ${segment.name}`,
-                                    segment: segment,
-                                    segmentType: 'story'
-                                });
-                            }
-                            break;
-                    }
-                }
-            }
+        // Check if this is WCTR (talk radio)
+        if (currentStation.key === 'wctr') {
+            generateWCTRPlaylist();
+        } else {
+            generateMusicPlaylist();
         }
 
         // Start playback
@@ -639,6 +578,219 @@ function generateAndPlay() {
         generateBtn.classList.add('hidden'); // Hide button after starting playback
         audioPlayerDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
+}
+
+// Generate playlist for WCTR (talk radio)
+function generateWCTRPlaylist() {
+    const includeAds = includeAdsCheckbox.checked;
+
+    // WCTR stores talk shows as "songs" in the data structure
+    // Order them: all Episode 1s (shuffled), then Episode 2s, etc.
+    const talkShows = orderWCTREpisodes(currentStation.songs);
+
+    const jingles = [...(currentStation.segments.station_jingle || [])];
+    const ads = adsData.map(a => ({...a}));
+
+    generatedPlaylist = [];
+
+    for (let i = 0; i < talkShows.length; i++) {
+        // Jingle (70% chance)
+        if (jingles.length > 0 && Math.random() < 0.7) {
+            const jingle = randomPick(jingles);
+            generatedPlaylist.push({
+                type: 'jingle',
+                name: jingle.name,
+                segment: jingle
+            });
+        }
+
+        // Talk show episode
+        const show = talkShows[i];
+        generatedPlaylist.push({
+            type: 'song', // Keep as 'song' type for API URL building
+            name: `${show.artists.join(', ')} - ${show.name}`,
+            song: show,
+            introNum: 0,
+            outroNum: 0
+        });
+
+        // Advertisement (25% chance for talk radio)
+        if (includeAds && ads.length > 0 && Math.random() < 0.25) {
+            const ad = randomPick(ads);
+            if (ad) {
+                generatedPlaylist.push({
+                    type: 'ad',
+                    name: ad.name,
+                    ad: ad
+                });
+            }
+        }
+    }
+}
+
+// Order WCTR episodes: Episode 1 of all shows (shuffled), then Episode 2, etc.
+function orderWCTREpisodes(songs) {
+    // Group by episode number
+    const episodeGroups = {};
+
+    songs.forEach(song => {
+        // Extract episode number from name (e.g., "Episode #1", "Episode #02", "Teaser #1")
+        const match = song.name.match(/#(\d+)/);
+        const episodeNum = match ? parseInt(match[1]) : 0;
+
+        if (!episodeGroups[episodeNum]) {
+            episodeGroups[episodeNum] = [];
+        }
+        episodeGroups[episodeNum].push({...song});
+    });
+
+    // Sort episode numbers and shuffle within each group
+    const sortedEpisodeNums = Object.keys(episodeGroups).map(Number).sort((a, b) => a - b);
+    const orderedShows = [];
+
+    sortedEpisodeNums.forEach(episodeNum => {
+        // Shuffle shows within this episode number
+        const shuffled = episodeGroups[episodeNum].sort(() => Math.random() - 0.5);
+        orderedShows.push(...shuffled);
+    });
+
+    return orderedShows;
+}
+
+// Generate playlist for music stations
+function generateMusicPlaylist() {
+    const includeAds = includeAdsCheckbox.checked;
+    const includeWeather = includeWeatherCheckbox.checked;
+    const includeBridges = includeBridgesCheckbox.checked;
+
+    // Use ALL songs from the station
+    const songs = currentStation.songs.map(s => ({...s}));
+    const iterations = songs.length;
+
+    const jingles = [...(currentStation.segments.station_jingle || [])];
+    const bridges = [...(currentStation.segments.bridge_announcement || [])];
+    const callers = [...(currentStation.segments.caller || [])];
+    const weather = [...(currentStation.segments.weather || [])];
+    const djTalk = [...(currentStation.segments.dj_talk || [])];
+    const story = [...(currentStation.segments.story || [])];
+    const ads = adsData.map(a => ({...a}));
+
+    generatedPlaylist = [];
+
+    for (let i = 0; i < iterations && songs.length > 0; i++) {
+        // Same playlist generation logic as offline mode
+        if (jingles.length > 0 && Math.random() < 0.7) {
+            const jingle = randomPick(jingles);
+            generatedPlaylist.push({
+                type: 'jingle',
+                name: jingle.name,
+                segment: jingle
+            });
+        }
+
+        if (includeBridges && bridges.length > 0 && Math.random() < 0.08) {
+            const bridge = randomPick(bridges);
+            generatedPlaylist.push({
+                type: 'segment',
+                name: `[Bridge] ${bridge.name}`,
+                segment: bridge,
+                segmentType: 'bridge_announcement'
+            });
+        }
+
+        const song = randomPick(songs);
+        const introNum = song.intro_count > 0 ? Math.floor(Math.random() * song.intro_count) + 1 : 0;
+        const outroNum = song.outro_count > 0 ? Math.floor(Math.random() * song.outro_count) + 1 : 0;
+
+        generatedPlaylist.push({
+            type: 'song',
+            name: `${song.artists.join(', ')} - ${song.name}`,
+            song: song,
+            introNum: introNum,
+            outroNum: outroNum
+        });
+
+        const segmentTypes = [];
+        if (djTalk.length > 0) segmentTypes.push('dj_talk');
+        if (callers.length > 0) segmentTypes.push('caller');
+        if (story.length > 0) segmentTypes.push('story');
+        if (includeWeather && weather.length > 0) segmentTypes.push('weather');
+        if (includeAds && ads.length > 0) segmentTypes.push('ad');
+
+        if (segmentTypes.length > 0) {
+            let chosenType;
+            if (includeAds && ads.length > 0 && Math.random() < 0.2) {
+                chosenType = 'ad';
+            } else {
+                const nonAdTypes = segmentTypes.filter(t => t !== 'ad');
+                if (nonAdTypes.length > 0) {
+                    chosenType = randomChoice(nonAdTypes);
+                } else if (segmentTypes.includes('ad')) {
+                    chosenType = 'ad';
+                }
+            }
+
+            if (chosenType) {
+                let segment;
+                switch (chosenType) {
+                    case 'ad':
+                        segment = randomPick(ads);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'ad',
+                                name: segment.name,
+                                ad: segment
+                            });
+                        }
+                        break;
+                    case 'dj_talk':
+                        segment = randomPick(djTalk);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'segment',
+                                name: `[DJ] ${segment.name}`,
+                                segment: segment,
+                                segmentType: 'dj_talk'
+                            });
+                        }
+                        break;
+                    case 'caller':
+                        segment = randomPick(callers);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'segment',
+                                name: `[Caller] ${segment.name}`,
+                                segment: segment,
+                                segmentType: 'caller'
+                            });
+                        }
+                        break;
+                    case 'weather':
+                        segment = randomPick(weather);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'segment',
+                                name: `[Weather] ${segment.name}`,
+                                segment: segment,
+                                segmentType: 'weather'
+                            });
+                        }
+                        break;
+                    case 'story':
+                        segment = randomPick(story);
+                        if (segment) {
+                            generatedPlaylist.push({
+                                type: 'segment',
+                                name: `[Story] ${segment.name}`,
+                                segment: segment,
+                                segmentType: 'story'
+                            });
+                        }
+                        break;
+                }
+            }
+        }
+    }
 }
 
 function updatePreview(stats) {

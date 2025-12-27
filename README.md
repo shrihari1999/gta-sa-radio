@@ -8,7 +8,7 @@ A web app that lets you experience authentic GTA San Andreas radio stations. Str
 
 - **Online Mode** - Stream radio directly in the browser with a built-in audio player
 - **Offline Mode** - Generate .m3u playlists for use with local audio files
-- **11 Radio Stations** - All music stations from GTA San Andreas
+- **12 Radio Stations** - All stations from GTA San Andreas
 - **Authentic Experience** - Songs, DJ talk, callers, jingles, weather reports, and advertisements
 - **Continuous Playback** - Auto-generates new playlists when the current one ends
 - **PWA Support** - Install as an app on mobile or desktop
@@ -76,12 +76,17 @@ Music/gta_sa_audio/
 
 ## Playlist Logic
 
-Each playlist includes:
+### Music Stations
 - **Jingles** (70% chance between songs)
 - **Bridge Announcements** (8% chance)
 - **Songs** (all station songs, randomized)
 - **Segments** (DJ talk, callers, weather, stories)
 - **Advertisements** (20% chance)
+
+### WCTR (Talk Radio)
+- **Jingles** (70% chance between segments)
+- **Talk Segments** (host commentary, callers, stories)
+- **Advertisements** (25% chance)
 
 No content repeats within a single playlist.
 
