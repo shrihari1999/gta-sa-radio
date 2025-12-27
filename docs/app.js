@@ -292,7 +292,7 @@ function buildSegmentPath(segment, station) {
 }
 
 function buildAdPath(ad) {
-    const filename = `${ad.name}.ogg`;
+    const filename = `${ad.name}.mp3`;
     return `advertisements/${filename}`;
 }
 
