@@ -378,8 +378,8 @@ function generateWCTRPlaylistOffline() {
         });
         stats.songs++;
 
-        // Advertisement (25% chance for talk radio)
-        if (includeAds && ads.length > 0 && Math.random() < 0.25) {
+        // Advertisement (50% chance for talk radio)
+        if (includeAds && ads.length > 0 && Math.random() < 0.5) {
             const ad = randomPick(ads);
             if (ad) {
                 generatedPlaylist.push({
@@ -527,8 +527,8 @@ function generateMusicPlaylistOffline() {
         });
         stats.songs++;
 
-        // 4. Ad segment after song (20% chance)
-        if (includeAds && ads.length > 0 && Math.random() < 0.2) {
+        // 4. Ad segment after song (35% chance)
+        if (includeAds && ads.length > 0 && Math.random() < 0.35) {
             const ad = randomPick(ads);
             if (ad) {
                 generatedPlaylist.push({
@@ -605,8 +605,8 @@ function generateWCTRPlaylist() {
             outroNum: 0
         });
 
-        // Advertisement (25% chance for talk radio)
-        if (includeAds && ads.length > 0 && Math.random() < 0.25) {
+        // Advertisement (50% chance for talk radio)
+        if (includeAds && ads.length > 0 && Math.random() < 0.5) {
             const ad = randomPick(ads);
             if (ad) {
                 generatedPlaylist.push({
@@ -764,8 +764,8 @@ function generateMusicPlaylist() {
             outroNum: outroNum
         });
 
-        // 4. Ad segment after song (20% chance)
-        if (includeAds && ads.length > 0 && Math.random() < 0.2) {
+        // 4. Ad segment after song (35% chance)
+        if (includeAds && ads.length > 0 && Math.random() < 0.35) {
             const ad = randomPick(ads);
             if (ad) {
                 generatedPlaylist.push({

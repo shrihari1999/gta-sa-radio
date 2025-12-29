@@ -81,12 +81,12 @@ Each iteration follows this order:
 1. **Jingle** (70% chance)
 2. **Segment** - one of: Bridge announcement, Weather, DJ talk, Caller, or Story
 3. **Song** (all station songs played, randomized)
-4. **Advertisement** (20% chance)
+4. **Advertisement** (35% chance)
 
 ### WCTR (Talk Radio)
 1. **Jingle** (70% chance)
 2. **Talk Show Episode** (all episodes played in order by episode number)
-3. **Advertisement** (25% chance)
+3. **Advertisement** (50% chance)
 
 No content repeats within a single playlist.
 
