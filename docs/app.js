@@ -345,13 +345,16 @@ function generateWCTRPlaylistOffline() {
 
     // WCTR stores talk shows as "songs" in the data structure
     // Order them: all Episode 1s (shuffled), then Episode 2s, etc.
-    const talkShows = orderWCTREpisodes(currentStation.songs);
+    // News is separated and plays after every 2 shows
+    const { shows: talkShows, news: newsSegments } = orderWCTREpisodes(currentStation.songs);
 
     const jingles = [...(currentStation.segments.station_jingle || [])];
     const ads = adsData.map(a => ({...a}));
 
     generatedPlaylist = [];
     const stats = { songs: 0, jingles: 0, ads: 0, segments: 0 };
+    let showsSinceNews = 0;
+    let newsIndex = 0;
 
     for (let i = 0; i < talkShows.length; i++) {
         // Jingle (70% chance)
@@ -377,6 +380,23 @@ function generateWCTRPlaylistOffline() {
             outroNum: 0
         });
         stats.songs++;
+        showsSinceNews++;
+
+        // Insert news after every 2 shows
+        if (showsSinceNews >= 2 && newsIndex < newsSegments.length) {
+            const newsItem = newsSegments[newsIndex];
+            generatedPlaylist.push({
+                type: 'song',
+                name: `${newsItem.artists.join(', ')} - ${newsItem.name}`,
+                path: buildSongPath(newsItem, currentStation, 0, 0),
+                song: newsItem,
+                introNum: 0,
+                outroNum: 0
+            });
+            stats.songs++;
+            newsIndex++;
+            showsSinceNews = 0;
+        }
 
         // Advertisement (50% chance for talk radio)
         if (includeAds && ads.length > 0 && Math.random() < 0.5) {
@@ -391,6 +411,21 @@ function generateWCTRPlaylistOffline() {
                 stats.ads++;
             }
         }
+    }
+
+    // Add any remaining news segments at the end
+    while (newsIndex < newsSegments.length) {
+        const newsItem = newsSegments[newsIndex];
+        generatedPlaylist.push({
+            type: 'song',
+            name: `${newsItem.artists.join(', ')} - ${newsItem.name}`,
+            path: buildSongPath(newsItem, currentStation, 0, 0),
+            song: newsItem,
+            introNum: 0,
+            outroNum: 0
+        });
+        stats.songs++;
+        newsIndex++;
     }
 
     updatePreview(stats);
@@ -577,12 +612,15 @@ function generateWCTRPlaylist() {
 
     // WCTR stores talk shows as "songs" in the data structure
     // Order them: all Episode 1s (shuffled), then Episode 2s, etc.
-    const talkShows = orderWCTREpisodes(currentStation.songs);
+    // News is separated and plays after every 2 shows
+    const { shows: talkShows, news: newsSegments } = orderWCTREpisodes(currentStation.songs);
 
     const jingles = [...(currentStation.segments.station_jingle || [])];
     const ads = adsData.map(a => ({...a}));
 
     generatedPlaylist = [];
+    let showsSinceNews = 0;
+    let newsIndex = 0;
 
     for (let i = 0; i < talkShows.length; i++) {
         // Jingle (70% chance)
@@ -604,6 +642,21 @@ function generateWCTRPlaylist() {
             introNum: 0,
             outroNum: 0
         });
+        showsSinceNews++;
+
+        // Insert news after every 2 shows
+        if (showsSinceNews >= 2 && newsIndex < newsSegments.length) {
+            const newsItem = newsSegments[newsIndex];
+            generatedPlaylist.push({
+                type: 'song',
+                name: `${newsItem.artists.join(', ')} - ${newsItem.name}`,
+                song: newsItem,
+                introNum: 0,
+                outroNum: 0
+            });
+            newsIndex++;
+            showsSinceNews = 0;
+        }
 
         // Advertisement (50% chance for talk radio)
         if (includeAds && ads.length > 0 && Math.random() < 0.5) {
@@ -617,10 +670,39 @@ function generateWCTRPlaylist() {
             }
         }
     }
+
+    // Add any remaining news segments at the end
+    while (newsIndex < newsSegments.length) {
+        const newsItem = newsSegments[newsIndex];
+        generatedPlaylist.push({
+            type: 'song',
+            name: `${newsItem.artists.join(', ')} - ${newsItem.name}`,
+            song: newsItem,
+            introNum: 0,
+            outroNum: 0
+        });
+        newsIndex++;
+    }
 }
 
 // Order WCTR episodes: Episode 1 of all shows (shuffled), then Episode 2, etc.
+// Returns { shows: [...], news: [...] } where news is ordered separately
 function orderWCTREpisodes(songs) {
+    // Separate news from other shows
+    const newsSongs = songs.filter(song => song.name.startsWith('News - '));
+    const otherSongs = songs.filter(song => !song.name.startsWith('News - '));
+
+    // Order non-news shows by episode number
+    const orderedShows = orderByEpisode(otherSongs);
+
+    // Order news separately by episode number
+    const orderedNews = orderByEpisode(newsSongs);
+
+    return { shows: orderedShows, news: orderedNews };
+}
+
+// Helper function to order songs by episode number
+function orderByEpisode(songs) {
     // Group by episode number
     const episodeGroups = {};
 
