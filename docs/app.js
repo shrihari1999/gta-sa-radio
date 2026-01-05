@@ -272,7 +272,7 @@ function formatTime(seconds) {
 }
 
 function buildSongPath(song, station, introNum, outroNum) {
-    const artistStr = song.artists.join(', ');
+    const artistStr = formatArtists(song.artists);
     let filename;
     if (introNum === 0 && outroNum === 0) {
         filename = `${artistStr} - ${song.name}.mp3`;
@@ -280,6 +280,13 @@ function buildSongPath(song, station, introNum, outroNum) {
         filename = `${artistStr} - ${song.name} (Intro ${introNum}, Outro ${outroNum}).mp3`;
     }
     return `songs/${station.name}/${filename}`;
+}
+
+function formatArtists(artists) {
+    if (!artists || artists.length === 0) return 'Unknown Artist';
+    if (artists.length === 1) return artists[0];
+    if (artists.length === 2) return `${artists[0]} & ${artists[1]}`;
+    return `${artists.slice(0, -1).join(', ')} & ${artists[artists.length - 1]}`;
 }
 
 function buildSegmentPath(segment, station) {
