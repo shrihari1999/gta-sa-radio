@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gta-sa-radio-v2';
+const CACHE_NAME = 'gta-sa-radio-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -40,6 +40,13 @@ self.addEventListener('activate', event => {
 // Fetch: network-first for core files, cache-first for assets
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
+
+  // Skip cross-origin requests (e.g. audio streamed from Cloudflare R2).
+  // These use HTTP range requests; 206 partial responses can't be cached
+  // and shouldn't be intercepted — let the browser handle them natively.
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
   // Network-first for HTML, JS, CSS, and JSON files
   if (event.request.destination === 'document' ||

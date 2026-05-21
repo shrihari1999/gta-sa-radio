@@ -271,6 +271,21 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+// Pick a matched (intro, outro) DJ-talk variant for a song.
+// On disk, songs exist only as a matched pair or with neither —
+// never a mismatch like (Intro 2, Outro 0), so the two must be coupled.
+function pickIntroOutro(song) {
+    const ic = song.intro_count || 0;
+    const oc = song.outro_count || 0;
+    if (ic === 0 || oc === 0) return { introNum: 0, outroNum: 0 };
+    // Variants: no intro/outro, or any (1..ic, 1..oc) pair — all equally likely
+    if (Math.random() < 1 / (1 + ic * oc)) return { introNum: 0, outroNum: 0 };
+    return {
+        introNum: 1 + Math.floor(Math.random() * ic),
+        outroNum: 1 + Math.floor(Math.random() * oc)
+    };
+}
+
 function buildSongPath(song, station, introNum, outroNum) {
     const artistStr = formatArtists(song.artists);
     let filename;
@@ -300,32 +315,30 @@ function buildAdPath(ad) {
     return `advertisements/${filename}`;
 }
 
-// Build API URL for online mode
+// Base URL for online audio — Cloudflare R2 public bucket
+const AUDIO_BASE_URL = 'https://pub-70dab7b9c68f45d8a0e8c2cb3050263b.r2.dev';
+
+// Build the audio URL for online mode.
+// Reuses the offline path builders, since the R2 bucket mirrors the
+// gta_sa_audio/ folder structure exactly.
 function buildApiUrl(item, station) {
-    const baseUrl = 'https://gtatunes.net/api';
+    let path;
 
     if (item.type === 'song') {
-        // Extract song info from the item
-        const songName = item.song ? item.song.name : item.name.split(' - ')[1];
-        const intro = item.introNum || 0;
-        const outro = item.outroNum || 0;
-
-        let url = `${baseUrl}/stations/sa/${station.key}/play?song=${encodeURIComponent(songName)}`;
-        if (intro > 0) url += `&intro=${intro}`;
-        if (outro > 0) url += `&outro=${outro}`;
-        return url;
+        if (!item.song) return null;
+        path = buildSongPath(item.song, station, item.introNum || 0, item.outroNum || 0);
     } else if (item.type === 'ad') {
-        return `${baseUrl}/segments/sa/play?advert=${encodeURIComponent(item.name)}`;
-    } else if (item.type === 'jingle') {
-        return `${baseUrl}/segments/sa/${station.key}/play?station_jingle=${encodeURIComponent(item.name)}`;
-    } else if (item.type === 'segment') {
-        // Determine segment type from name or segment object
-        const segmentType = item.segmentType || 'dj_talk';
-        const segmentName = item.name.replace(/^\[(.*?)\]\s*/, ''); // Remove prefix like [DJ], [Weather]
-        return `${baseUrl}/segments/sa/${station.key}/play?${segmentType}=${encodeURIComponent(segmentName)}`;
+        path = buildAdPath(item.ad || item);
+    } else if (item.type === 'jingle' || item.type === 'segment') {
+        if (!item.segment) return null;
+        path = buildSegmentPath(item.segment, station);
+    } else {
+        return null;
     }
 
-    return null;
+    // Encode each path component — filenames contain spaces and special chars
+    const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+    return `${AUDIO_BASE_URL}/${encodedPath}`;
 }
 
 // Generate playlist - uses all available songs (or talk segments for WCTR)
@@ -555,9 +568,8 @@ function generateMusicPlaylistOffline() {
 
         // 3. Song (mandatory)
         const song = randomPick(songs);
-        // Random intro/outro including 0 (no intro/outro)
-        const introNum = song.intro_count > 0 ? Math.floor(Math.random() * (song.intro_count + 1)) : 0;
-        const outroNum = song.outro_count > 0 ? Math.floor(Math.random() * (song.outro_count + 1)) : 0;
+        // Matched intro/outro variant (or neither)
+        const { introNum, outroNum } = pickIntroOutro(song);
 
         generatedPlaylist.push({
             type: 'song',
@@ -841,9 +853,8 @@ function generateMusicPlaylist() {
 
         // 3. Song (mandatory)
         const song = randomPick(songs);
-        // Random intro/outro including 0 (no intro/outro)
-        const introNum = song.intro_count > 0 ? Math.floor(Math.random() * (song.intro_count + 1)) : 0;
-        const outroNum = song.outro_count > 0 ? Math.floor(Math.random() * (song.outro_count + 1)) : 0;
+        // Matched intro/outro variant (or neither)
+        const { introNum, outroNum } = pickIntroOutro(song);
 
         generatedPlaylist.push({
             type: 'song',
